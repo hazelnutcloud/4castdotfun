@@ -68,7 +68,7 @@ contract Markets4CastTest is Test {
 
     function setUp() public virtual {
         token = new MockERC20();
-        
+
         // Deploy contract with owner
         vm.prank(owner);
         markets = new Markets4Cast(address(token));
@@ -569,24 +569,24 @@ contract CreateMarketTest is Markets4CastTest {
     function test_CreateMarket_OnlyOwner() public {
         vm.expectEmit(true, false, false, false);
         emit MarketCreated(1);
-        
+
         vm.prank(owner);
         markets.createMarket();
     }
-    
+
     function test_CreateMarket_RevertUnauthorized() public {
         vm.prank(alice);
         vm.expectRevert(Ownable.Unauthorized.selector);
         markets.createMarket();
     }
-    
+
     function test_CreateMarket_IncrementsId() public {
         vm.prank(owner);
         markets.createMarket(); // Should create market ID 1
-        
+
         vm.expectEmit(true, false, false, false);
         emit MarketCreated(2);
-        
+
         vm.prank(owner);
         markets.createMarket(); // Should create market ID 2
     }
@@ -596,34 +596,34 @@ contract ResolveMarketTest is Markets4CastTest {
     function test_ResolveMarket_Yes() public {
         vm.expectEmit(true, false, false, true);
         emit MarketResolved(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
     }
-    
+
     function test_ResolveMarket_No() public {
         vm.expectEmit(true, false, false, true);
         emit MarketResolved(MARKET_ID, Markets4Cast.Outcome.No);
-        
+
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.No);
     }
-    
+
     function test_ResolveMarket_RevertUnauthorized() public {
         vm.prank(alice);
         vm.expectRevert(Ownable.Unauthorized.selector);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
     }
-    
+
     function test_ResolveMarket_RevertAlreadyResolved() public {
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(owner);
         vm.expectRevert(Markets4Cast.MarketAlreadyResolved.selector);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.No);
     }
-    
+
     function test_ResolveMarket_RevertNonexistentMarket() public {
         // Try to resolve a market that was never created (ID 999)
         vm.prank(owner);
@@ -637,77 +637,77 @@ contract CancelOrderTest is Markets4CastTest {
         uint256 price = 600;
         uint256 size = 100;
         uint256 orderIndex = 0;
-        
+
         // Alice places a limit buy order
         vm.prank(alice);
         bytes32 orderId = markets.limitBuy(MARKET_ID, price, size, Markets4Cast.Outcome.Yes);
-        
+
         uint256 aliceBalanceBefore = token.balanceOf(alice);
-        
+
         vm.expectEmit(true, true, false, true);
         emit OrderCancelled(MARKET_ID, alice, orderId);
-        
+
         // Alice cancels her order
         vm.prank(alice);
         markets.cancelOrder(MARKET_ID, price, orderIndex, Markets4Cast.Side.Bid, Markets4Cast.Outcome.Yes);
-        
+
         // Alice should get her collateral back
         uint256 expectedRefund = (size * price * 1e18) / BPS;
         assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedRefund);
     }
-    
+
     function test_CancelOrder_AskOrder() public {
         uint256 price = 600;
         uint256 size = 100;
         uint256 orderIndex = 0;
-        
+
         // First give Alice shares
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, 500, 200, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(bob);
         markets.marketBuy(MARKET_ID, 200, Markets4Cast.Outcome.No); // Alice gets shares
-        
+
         // Alice places a limit sell order
         vm.prank(alice);
         bytes32 orderId = markets.limitSell(MARKET_ID, price, size, Markets4Cast.Outcome.Yes);
-        
+
         vm.expectEmit(true, true, false, true);
         emit OrderCancelled(MARKET_ID, alice, orderId);
-        
+
         // Alice cancels her sell order - should get shares back
         vm.prank(alice);
         markets.cancelOrder(MARKET_ID, price, orderIndex, Markets4Cast.Side.Ask, Markets4Cast.Outcome.Yes);
     }
-    
+
     function test_CancelOrder_RevertUnauthorized() public {
         uint256 price = 600;
         uint256 size = 100;
         uint256 orderIndex = 0;
-        
+
         // Alice places a limit buy order
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, price, size, Markets4Cast.Outcome.Yes);
-        
+
         // Bob tries to cancel Alice's order
         vm.prank(bob);
         vm.expectRevert(Ownable.Unauthorized.selector);
         markets.cancelOrder(MARKET_ID, price, orderIndex, Markets4Cast.Side.Bid, Markets4Cast.Outcome.Yes);
     }
-    
+
     function test_CancelOrder_RevertMarketResolved() public {
         uint256 price = 600;
         uint256 size = 100;
         uint256 orderIndex = 0;
-        
+
         // Alice places a limit buy order
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, price, size, Markets4Cast.Outcome.Yes);
-        
+
         // Resolve the market
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         // Alice tries to cancel order after resolution
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.MarketAlreadyResolved.selector);
@@ -718,99 +718,99 @@ contract CancelOrderTest is Markets4CastTest {
 contract ClaimTest is Markets4CastTest {
     function test_Claim_WinningShares() public {
         uint256 size = 100;
-        
+
         // Setup: Alice gets Yes shares through trading
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, 600, size, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(bob);
         markets.marketBuy(MARKET_ID, size, Markets4Cast.Outcome.No); // Alice gets Yes shares
-        
+
         // Resolve market with Yes outcome
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         uint256 aliceBalanceBefore = token.balanceOf(alice);
-        
+
         vm.expectEmit(true, true, false, true);
         emit RewardsClaimed(alice, MARKET_ID, size);
-        
+
         // Alice claims her winnings
         vm.prank(alice);
         markets.claim(MARKET_ID);
-        
+
         // Alice should receive full collateral value
         uint256 expectedPayout = size * 1e18;
         assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedPayout);
     }
-    
+
     function test_Claim_LosingShares() public {
         uint256 size = 100;
-        
+
         // Setup: Alice gets Yes shares, Bob gets No shares
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, 600, size, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(bob);
         markets.marketBuy(MARKET_ID, size, Markets4Cast.Outcome.No);
-        
+
         // Resolve market with No outcome (Alice loses)
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.No);
-        
+
         // Alice tries to claim - should revert
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.InsufficientShares.selector);
         markets.claim(MARKET_ID);
-        
+
         // Bob should be able to claim
         uint256 bobBalanceBefore = token.balanceOf(bob);
-        
+
         vm.prank(bob);
         markets.claim(MARKET_ID);
-        
+
         uint256 expectedPayout = size * 1e18;
         assertEq(token.balanceOf(bob), bobBalanceBefore + expectedPayout);
     }
-    
+
     function test_Claim_RevertMarketNotResolved() public {
         // Alice has shares but market not resolved
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, 600, 100, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.MarketNotResolved.selector);
         markets.claim(MARKET_ID);
     }
-    
+
     function test_Claim_RevertNoShares() public {
         // Resolve market
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         // Charlie has no shares
         vm.prank(charlie);
         vm.expectRevert(Markets4Cast.InsufficientShares.selector);
         markets.claim(MARKET_ID);
     }
-    
+
     function test_Claim_OnlyOnce() public {
         uint256 size = 100;
-        
+
         // Setup and resolve market
         vm.prank(alice);
         markets.limitBuy(MARKET_ID, 600, size, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(bob);
         markets.marketBuy(MARKET_ID, size, Markets4Cast.Outcome.No);
-        
+
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         // Alice claims once
         vm.prank(alice);
         markets.claim(MARKET_ID);
-        
+
         // Alice tries to claim again
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.InsufficientShares.selector);
@@ -824,46 +824,46 @@ contract MarketLifecycleTest is Markets4CastTest {
         vm.prank(owner);
         markets.createMarket();
         uint256 marketId = 1;
-        
+
         // 2. Trading phase
         vm.prank(alice);
         markets.limitBuy(marketId, 600, 100, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(bob);
         markets.limitBuy(marketId, 400, 150, Markets4Cast.Outcome.No);
-        
+
         vm.prank(charlie);
         markets.marketBuy(marketId, 100, Markets4Cast.Outcome.Yes); // Matches Bob's No bid
-        
+
         // 3. Resolve market
         vm.prank(owner);
         markets.resolveMarket(marketId, Markets4Cast.Outcome.Yes);
-        
+
         // 4. Claims
         uint256 charlieBalanceBefore = token.balanceOf(charlie);
-        
+
         vm.prank(charlie);
         markets.claim(marketId);
-        
+
         // Charlie should receive full payout for his Yes shares
         assertEq(token.balanceOf(charlie), charlieBalanceBefore + 100 * 1e18);
-        
+
         // Bob should not be able to claim (he has No shares but outcome was Yes)
         vm.prank(bob);
         vm.expectRevert(Markets4Cast.InsufficientShares.selector);
         markets.claim(marketId);
     }
-    
+
     function test_NoTradingAfterResolution() public {
         // Resolve market
         vm.prank(owner);
         markets.resolveMarket(MARKET_ID, Markets4Cast.Outcome.Yes);
-        
+
         // Try to trade after resolution
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.MarketAlreadyResolved.selector);
         markets.limitBuy(MARKET_ID, 600, 100, Markets4Cast.Outcome.Yes);
-        
+
         vm.prank(alice);
         vm.expectRevert(Markets4Cast.MarketAlreadyResolved.selector);
         markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
