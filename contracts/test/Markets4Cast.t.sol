@@ -48,26 +48,12 @@ contract Markets4CastTest is Test {
         Markets4Cast.Side side
     );
 
-    event OrderFilled(
-        uint256 indexed marketId,
-        address indexed maker,
-        bytes32 orderId,
-        uint256 size,
-        address taker
-    );
+    event OrderFilled(uint256 indexed marketId, address indexed maker, bytes32 orderId, uint256 size, address taker);
 
-    event PriceLevelCleared(
-        uint256 indexed marketId,
-        uint256 price,
-        Markets4Cast.Outcome outcome
-    );
+    event PriceLevelCleared(uint256 indexed marketId, uint256 price, Markets4Cast.Outcome outcome);
 
     event SharesTransferred(
-        address indexed from,
-        address indexed to,
-        uint256 indexed marketId,
-        uint256 amount,
-        Markets4Cast.Outcome outcome
+        address indexed from, address indexed to, uint256 indexed marketId, uint256 amount, Markets4Cast.Outcome outcome
     );
 
     function setUp() public virtual {
@@ -130,22 +116,11 @@ contract LimitBuyTest is Markets4CastTest {
         );
 
         vm.prank(alice);
-        bytes32 orderId = markets.limitBuy(
-            MARKET_ID,
-            price,
-            size,
-            Markets4Cast.Outcome.Yes
-        );
+        bytes32 orderId = markets.limitBuy(MARKET_ID, price, size, Markets4Cast.Outcome.Yes);
 
         assertEq(orderId, markets.getOrderId(MARKET_ID, price, 0));
-        assertEq(
-            token.balanceOf(alice),
-            aliceBalanceBefore - expectedCollateral
-        );
-        assertEq(
-            token.balanceOf(address(markets)),
-            contractBalanceBefore + expectedCollateral
-        );
+        assertEq(token.balanceOf(alice), aliceBalanceBefore - expectedCollateral);
+        assertEq(token.balanceOf(address(markets)), contractBalanceBefore + expectedCollateral);
     }
 
     function test_LimitBuy_No_Basic() public {
@@ -154,12 +129,7 @@ contract LimitBuyTest is Markets4CastTest {
         uint256 expectedCollateral = (size * price * 1e18) / BPS;
 
         vm.prank(bob);
-        bytes32 orderId = markets.limitBuy(
-            MARKET_ID,
-            price,
-            size,
-            Markets4Cast.Outcome.No
-        );
+        bytes32 orderId = markets.limitBuy(MARKET_ID, price, size, Markets4Cast.Outcome.No);
 
         assertEq(orderId, markets.getOrderId(MARKET_ID, price, 0));
         assertEq(token.balanceOf(bob), 1000e18 - expectedCollateral);
@@ -189,20 +159,10 @@ contract LimitBuyTest is Markets4CastTest {
         uint256 price = 500;
 
         vm.prank(alice);
-        bytes32 orderId1 = markets.limitBuy(
-            MARKET_ID,
-            price,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        bytes32 orderId1 = markets.limitBuy(MARKET_ID, price, 100, Markets4Cast.Outcome.Yes);
 
         vm.prank(bob);
-        bytes32 orderId2 = markets.limitBuy(
-            MARKET_ID,
-            price,
-            200,
-            Markets4Cast.Outcome.Yes
-        );
+        bytes32 orderId2 = markets.limitBuy(MARKET_ID, price, 200, Markets4Cast.Outcome.Yes);
 
         assertNotEq(orderId1, orderId2);
         assertEq(orderId1, markets.getOrderId(MARKET_ID, price, 0));
@@ -217,10 +177,7 @@ contract LimitBuyTest is Markets4CastTest {
         markets.limitBuy(MARKET_ID, 700, 150, Markets4Cast.Outcome.Yes);
 
         // Both orders should succeed
-        assertEq(
-            token.balanceOf(alice),
-            1000e18 - ((100 * 300 * 1e18) / BPS) - ((150 * 700 * 1e18) / BPS)
-        );
+        assertEq(token.balanceOf(alice), 1000e18 - ((100 * 300 * 1e18) / BPS) - ((150 * 700 * 1e18) / BPS));
     }
 }
 
@@ -237,11 +194,7 @@ contract LimitSellTest is Markets4CastTest {
         // We'll need to use a market buy to actually get shares, but for now let's create a helper
     }
 
-    function giveShares(
-        address user,
-        uint256 amount,
-        Markets4Cast.Outcome outcome
-    ) internal {
+    function giveShares(address user, uint256 amount, Markets4Cast.Outcome outcome) internal {
         // This is a helper to simulate having shares - in real scenarios they come from completed trades
         // For testing purposes, we'll use market orders to create shares
         vm.prank(user);
@@ -249,10 +202,8 @@ contract LimitSellTest is Markets4CastTest {
 
         // Create opposite order to mint shares
         address counterparty = user == alice ? bob : alice;
-        Markets4Cast.Outcome counterOutcome = outcome ==
-            Markets4Cast.Outcome.Yes
-            ? Markets4Cast.Outcome.No
-            : Markets4Cast.Outcome.Yes;
+        Markets4Cast.Outcome counterOutcome =
+            outcome == Markets4Cast.Outcome.Yes ? Markets4Cast.Outcome.No : Markets4Cast.Outcome.Yes;
 
         vm.prank(counterparty);
         markets.marketBuy(MARKET_ID, amount, counterOutcome);
@@ -294,30 +245,17 @@ contract MarketBuyTest is Markets4CastTest {
         uint256 aliceBalanceBefore = token.balanceOf(alice);
 
         vm.expectEmit(true, true, false, true);
-        emit MarketOrderExecuted(
-            alice,
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes,
-            Markets4Cast.Side.Bid
-        );
+        emit MarketOrderExecuted(alice, MARKET_ID, 100, Markets4Cast.Outcome.Yes, Markets4Cast.Side.Bid);
 
         // Alice market buys Yes - should match against Bob's No bid
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 100);
 
         // Alice should pay (BPS - marketPrice) = (1000 - 400) = 600 basis points = 60%
         uint256 expectedAliceCollateral = (100 * 600 * 1e18) / BPS;
-        assertEq(
-            token.balanceOf(alice),
-            aliceBalanceBefore - expectedAliceCollateral
-        );
+        assertEq(token.balanceOf(alice), aliceBalanceBefore - expectedAliceCollateral);
     }
 
     function test_MarketBuy_ShareMinting_NoVsYesBid() public {
@@ -329,20 +267,13 @@ contract MarketBuyTest is Markets4CastTest {
 
         // Bob market buys No - should match against Alice's Yes bid
         vm.prank(bob);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            150,
-            Markets4Cast.Outcome.No
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, 150, Markets4Cast.Outcome.No);
 
         assertEq(fulfilled, 150);
 
         // Bob should pay (BPS - marketPrice) = (1000 - 700) = 300 basis points = 30%
         uint256 expectedBobCollateral = (150 * 300 * 1e18) / BPS;
-        assertEq(
-            token.balanceOf(bob),
-            bobBalanceBefore - expectedBobCollateral
-        );
+        assertEq(token.balanceOf(bob), bobBalanceBefore - expectedBobCollateral);
     }
 
     function test_MarketBuy_PartialFill() public {
@@ -352,11 +283,7 @@ contract MarketBuyTest is Markets4CastTest {
 
         // Alice tries to buy 100 Yes shares but only 50 available
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 50);
     }
@@ -374,11 +301,7 @@ contract MarketBuyTest is Markets4CastTest {
 
         // Alice market buys 100 Yes shares - should match highest prices first
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 100); // 20 + 30 + 50 = 100
     }
@@ -392,11 +315,7 @@ contract MarketBuyTest is Markets4CastTest {
     function test_MarketBuy_NoLiquidity() public {
         // No existing orders
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 0);
     }
@@ -427,20 +346,13 @@ contract MarketSellTest is Markets4CastTest {
 
         // Alice sells 100 Yes shares to Charlie
         vm.prank(alice);
-        uint256 fulfilled = markets.marketSell(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketSell(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 100);
 
         // Alice should receive 700 basis points = 70% of collateral
         uint256 expectedCollateral = (100 * 700 * 1e18) / BPS;
-        assertEq(
-            token.balanceOf(alice),
-            aliceBalanceBefore + expectedCollateral
-        );
+        assertEq(token.balanceOf(alice), aliceBalanceBefore + expectedCollateral);
     }
 
     function test_MarketSell_InsufficientShares() public {
@@ -458,11 +370,7 @@ contract MarketSellTest is Markets4CastTest {
     function test_MarketSell_NoMatchingBids() public {
         // No Yes bids available
         vm.prank(alice);
-        uint256 fulfilled = markets.marketSell(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketSell(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 0);
     }
@@ -481,11 +389,7 @@ contract MarketSellTest is Markets4CastTest {
 
         // Charlie tries to market sell Yes - should not match Alice's ask
         vm.prank(charlie);
-        uint256 fulfilled = markets.marketSell(
-            MARKET_ID,
-            50,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketSell(MARKET_ID, 50, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 0); // No bids available, asks are ignored
     }
@@ -507,11 +411,7 @@ contract FuzzTest is Markets4CastTest {
         assertEq(token.balanceOf(alice), balanceBefore - expectedCollateral);
     }
 
-    function testFuzz_MarketBuyShareMinting(
-        uint256 bidPrice,
-        uint256 bidSize,
-        uint256 buySize
-    ) public {
+    function testFuzz_MarketBuyShareMinting(uint256 bidPrice, uint256 bidSize, uint256 buySize) public {
         bidPrice = bound(bidPrice, 1, BPS - 1);
         bidSize = bound(bidSize, 1, 1000);
         buySize = bound(buySize, 1, bidSize); // Can't buy more than available
@@ -530,11 +430,7 @@ contract FuzzTest is Markets4CastTest {
 
         // Alice market buys Yes
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            buySize,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, buySize, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, buySize);
         assertEq(token.balanceOf(alice), aliceBalanceBefore - buyCollateral);
@@ -578,11 +474,7 @@ contract EdgeCaseTest is Markets4CastTest {
 
         // Alice sells 40 shares - should fill Bob's order first (FIFO)
         vm.prank(alice);
-        uint256 fulfilled = markets.marketSell(
-            MARKET_ID,
-            40,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketSell(MARKET_ID, 40, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, 40);
     }
@@ -596,10 +488,7 @@ contract EdgeCaseTest is Markets4CastTest {
         markets.limitBuy(MARKET_ID, BPS - 1, 100, Markets4Cast.Outcome.Yes);
 
         // Both should succeed
-        uint256 expectedCollateral = (100 * 1 * 1e18) /
-            BPS +
-            (100 * (BPS - 1) * 1e18) /
-            BPS;
+        uint256 expectedCollateral = (100 * 1 * 1e18) / BPS + (100 * (BPS - 1) * 1e18) / BPS;
         assertEq(token.balanceOf(alice), 1000e18 - expectedCollateral);
     }
 }
@@ -618,21 +507,13 @@ contract IntegrationTest is Markets4CastTest {
 
         // 3. Charlie market buys 100 Yes (matches Bob's No bid)
         vm.prank(charlie);
-        uint256 fulfilled1 = markets.marketBuy(
-            MARKET_ID,
-            100,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled1 = markets.marketBuy(MARKET_ID, 100, Markets4Cast.Outcome.Yes);
         assertEq(fulfilled1, 100);
 
         // 4. Now Bob has 100 No shares from the match, Alice still has her bid
         // Charlie market buys 50 No (matches Alice's Yes bid)
         vm.prank(charlie);
-        uint256 fulfilled2 = markets.marketBuy(
-            MARKET_ID,
-            50,
-            Markets4Cast.Outcome.No
-        );
+        uint256 fulfilled2 = markets.marketBuy(MARKET_ID, 50, Markets4Cast.Outcome.No);
         assertEq(fulfilled2, 50);
 
         // 5. Now Charlie has both Yes and No shares, let's have him sell some Yes shares
@@ -640,11 +521,7 @@ contract IntegrationTest is Markets4CastTest {
         markets.limitBuy(MARKET_ID, 700, 50, Markets4Cast.Outcome.Yes);
 
         vm.prank(charlie);
-        uint256 fulfilled3 = markets.marketSell(
-            MARKET_ID,
-            50,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled3 = markets.marketSell(MARKET_ID, 50, Markets4Cast.Outcome.Yes);
         assertEq(fulfilled3, 50);
     }
 
@@ -661,11 +538,7 @@ contract IntegrationTest is Markets4CastTest {
 
         // Alice market buys Yes - inverted price should be (1000 - 400) = 600
         vm.prank(alice);
-        uint256 fulfilled = markets.marketBuy(
-            MARKET_ID,
-            size,
-            Markets4Cast.Outcome.Yes
-        );
+        uint256 fulfilled = markets.marketBuy(MARKET_ID, size, Markets4Cast.Outcome.Yes);
 
         assertEq(fulfilled, size);
 
